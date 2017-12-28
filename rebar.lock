@@ -1,0 +1,16 @@
+{"1.1.0",
+[{<<"covertool">>,{pkg,<<"rebar_covertool">>,<<"1.0.0">>},0},
+ {<<"eunit_formatters">>,{pkg,<<"eunit_formatters">>,<<"0.3.1">>},0},
+ {<<"jiffy">>,{pkg,<<"jiffy">>,<<"0.14.11">>},0},
+ {<<"nested">>,{pkg,<<"nested">>,<<"0.1.2">>},0},
+ {<<"quickrand">>,{pkg,<<"quickrand">>,<<"1.6.0">>},1},
+ {<<"uuid">>,{pkg,<<"uuid_erl">>,<<"1.6.0">>},0}]}.
+[
+{pkg_hash,[
+ {<<"covertool">>, <<"D7B8D264B2C83B5FD766FEEF0E53C32E03606295A3797EC6F7016BDB047BD0EC">>},
+ {<<"eunit_formatters">>, <<"7A6FC351EB5B873E2356B8852EB751E20C13A72FBCA03393CF682B8483509573">>},
+ {<<"jiffy">>, <<"919A87D491C5A6B5E3BBC27FAFEDC3A0761CA0B4C405394F121F582FD4E3F0E5">>},
+ {<<"nested">>, <<"D411ABF7FDB6D6BCAC4A0E0769705649870E1046A98899001C282351E57C038D">>},
+ {<<"quickrand">>, <<"33A277A639C442D77AB5C1EEA4641A49E3F034FD13658BB57E192A6E083FE77D">>},
+ {<<"uuid">>, <<"1BA81515EEB37EEB7F1563B658E30CDF18BCAF1FD6A390BBF3838461753E69D8">>}]}
+].
