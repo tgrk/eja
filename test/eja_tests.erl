@@ -31,6 +31,11 @@ test_content_negotiation() ->
   end,
 
   ?assertEqual(
+    {"Content-Type", "application/vnd.api+json"},
+    eja:get_content_type()
+  ),
+
+  ?assertEqual(
     ok,
     eja:validate_request_headers(
       MakeHeaders("application/vnd.api+json", "application/vnd.api+json")
