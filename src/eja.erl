@@ -2,6 +2,7 @@
 
 %% API exports
 -export([ include_api_version/1
+        , get_content_type/0
         , validate_request_headers/1
         ]).
 
@@ -13,6 +14,9 @@
 
 include_api_version(ResponseMap) when is_map(ResponseMap) ->
   maps:put(<<"jsonapi">>, #{<<"version">> => <<"1.0">>}, ResponseMap).
+
+get_content_type() ->
+  {"Content-Type", ?CONTENT_TYPE}.
 
 validate_request_headers(Headers1) ->
   Headers = normalize_headers(Headers1, []),
