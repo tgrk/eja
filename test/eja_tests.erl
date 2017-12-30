@@ -63,7 +63,38 @@ test_content_negotiation() ->
   ok.
 
 test_query_parser() ->
-  ?assert(false).
+  Args = [
+      {<<"include">>, <<"author">>}
+    , {<<"fields[articles]">>, <<"title,body,author">>}
+    , {<<"fields[people]">>, <<"name">>}
+    , {<<"filter[tag]">>, <<"1,2">>}
+    , {<<"sort">>, <<"title, author">>}
+    , {<<"page[offset]">>, <<"1">>}
+    , {<<"page[limit]">>, <<"15">>}
+  ],
+  Query = eja_query:parse(Args),
+  ?assertEqual(
+    #{  <<"articles">> => [<<"title">>,<<"body">>,<<"author">>]
+      , <<"people">>   => [<<"name">>]
+    },
+    maps:get(fields, Query)
+  ),
+  ?assertEqual([<<"author">>], maps:get(include, Query)),
+  ?assertEqual(
+    #{<<"tag">> => [<<"1">>, <<"2">>]}
+    , maps:get(filter, Query)
+  ),
+  ?assertEqual(
+      [{asc, <<"title">>}, {asc, <<"author">>}]
+    , maps:get(sort, Query)
+  ),
+  ?assertEqual(
+    #{  <<"offset">> => <<"1">>
+      , <<"limit">>  => <<"15">>
+    },
+    maps:get(page, Query)
+  ),
+  ok.
 
 test_data_handling() ->
   Query = #{

@@ -14,42 +14,56 @@
 %%====================================================================
 
 parse(Args) when is_list(Args) ->
-  parse(maps:from_list(Args));
-parse(Args) when is_map(Args) ->
-  Fields     = maps:get(<<"fields">>, Args, []),
-  Include    = maps:get(<<"include">>, Args, []),
-  Sort       = maps:get(<<"sort">>, Args, []),
-  Filter     = maps:get(<<"filter">>, Args, []),
-  Pagination = maps:get(<<"page">>, Args, []),
-  #{fields  => parse_fields(Fields),
-    include => parse_include(Include),
-    sort    => parse_sort(Sort),
-    filter  => parse_filter(Filter),
-    page    => parse_pagination(Pagination)
-  }.
+  parse_args(Args, #{}).
 
 %%====================================================================
 %% Internal functions
 %%====================================================================
 
-parse_fields([]) -> [];
-parse_fields(Fields) ->
-  split(Fields).
+parse_args([], Acc) ->
+  Acc;
+parse_args([{<<"include">>, V} | T], Acc) ->
+  parse_args(T, maps:put(include, split(V), Acc));
+parse_args([{<<"sort">>, V} | T], Acc) ->
+  parse_args(T, maps:put(sort, parse_sort(V), Acc));
+parse_args([{<<"filter", _Rest/binary>> = K, V} | T], Acc) ->
+  parse_args(T, collect_array_args(filter, {K, V}, Acc));
+parse_args([{<<"fields", _Rest/binary>> = K, V} | T], Acc) ->
+  parse_args(T, collect_array_args(fields, {K, V}, Acc));
+parse_args([{<<"page", _Rest/binary>> = K, V} | T], Acc) ->
+  parse_args(T, collect_array_args(page, {K, V}, Acc));
+parse_args([_ | T], Acc) ->
+  parse_args(T, Acc).
 
-parse_include([]) -> [].
+collect_array_args(Label, {K, V}, Map) ->
+  Existing = maybe_create_map(Label, Map),
+  Parsed   = parse_args_array(Label, K),
+  maps:put(
+    Label, maps:put(Parsed, split(Label, V), Existing), Map
+  ).
 
-parse_filter([]) -> [].
+parse_args_array(Label, FieldKey) ->
+  Len = byte_size(atom_to_binary(Label, latin1)),
+  binary:part(FieldKey, Len + 1, byte_size(FieldKey) - (Len + 2)).
 
 parse_sort([]) -> [];
 parse_sort(Sort) ->
   [build_sort(S) || S <- split(Sort)].
 
-parse_pagination([]) -> [];
-parse_pagination(Pagination) ->
-  #{<<"page">> => 0, <<"limit">> => 0}.
-
 build_sort(<<"-", (Field)/binary>>) -> {desc, Field};
 build_sort(Field) -> {asc, Field}.
 
 split(Value) ->
-  binary:split(Value, [<<",">>], [global]).
+  binary:split(Value, [<<",">>, <<" ">>], [global, trim_all]).
+
+split(Label, Value) ->
+  case split(Value) of
+    [One] when Label == page -> One;
+    More -> More
+  end.
+
+maybe_create_map(Label, Map) ->
+  case maps:get(Label, Map, undefined) of
+    undefined -> #{};
+    Existing  -> Existing
+  end.
