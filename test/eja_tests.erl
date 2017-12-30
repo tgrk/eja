@@ -11,16 +11,56 @@ eja_test_() ->
     fun() -> ok end,
     fun(_) -> ok end,
     [
-        {"Query Parser",    fun test_query_parser/0}
-      , {"Data handling",   fun test_data_handling/0}
-      , {"Response Object", fun test_response_object/0}
-      , {"Error Object",    fun test_error_object/0}
-      , {"Relationships",   fun test_relationships/0}
-      , {"Pagination",      fun test_pagination/0}
+        {"Content Negotiation", fun test_content_negotiation/0}
+      , {"Query Parser",        fun test_query_parser/0}
+      , {"Data handling",       fun test_data_handling/0}
+      , {"Response Object",     fun test_response_object/0}
+      , {"Error Object",        fun test_error_object/0}
+      , {"Relationships",       fun test_relationships/0}
+      , {"Pagination",          fun test_pagination/0}
     ]
   }.
 
 %% =============================================================================
+
+test_content_negotiation() ->
+  MakeHeaders = fun (CT, Accept) ->
+    [ {"content-type", CT}
+    , {"accept", Accept}
+    ]
+  end,
+
+  ?assertEqual(
+    ok,
+    eja:validate_request_headers(
+      MakeHeaders("application/vnd.api+json", "application/vnd.api+json")
+    )
+  ),
+  ?assertEqual(
+    ok,
+    eja:validate_request_headers(
+      MakeHeaders("application/vnd.api+json", "*/*")
+    )
+  ),
+
+  ?assertEqual(
+    {error, not_acceptable},
+    eja:validate_request_headers([])
+  ),
+  ?assertEqual(
+    {error, unsupported_media_type},
+    eja:validate_request_headers(
+      MakeHeaders("application/vnd.api+json", "application/json")
+    )
+  ),
+  ?assertEqual(
+    {error, not_acceptable},
+    eja:validate_request_headers(
+      MakeHeaders("application/json", "application/vnd.api+json")
+    )
+  ),
+
+  ok.
 
 test_query_parser() ->
   ?assert(false).
@@ -40,6 +80,13 @@ test_data_handling() ->
   ).
 
 test_response_object() ->
+  %% api version
+  ?assertEqual(
+    #{<<"version">> => <<"1.0">>},
+    maps:get(<<"jsonapi">>, eja:include_api_version(maps:new()))
+  ),
+
+  %% documents
   Response = eja_response:build(
     <<"article">>,
     make_data(),

@@ -1,15 +1,48 @@
 -module(eja).
 
 %% API exports
--export([get_header/0]).
+-export([ include_api_version/1
+        , validate_request_headers/1
+        ]).
+
+-define(CONTENT_TYPE, "application/vnd.api+json").
 
 %%====================================================================
 %% API functions
 %%====================================================================
 
-get_header() ->
-  {"Content-Type", "application/vnd.api+json"}.
+include_api_version(ResponseMap) when is_map(ResponseMap) ->
+  maps:put(<<"jsonapi">>, #{<<"version">> => <<"1.0">>}, ResponseMap).
+
+validate_request_headers(Headers) ->
+  case has_valid_content_type_header(Headers) of
+    true ->
+      case has_valid_accept_header(Headers) of
+        true ->
+          ok;
+        false ->
+          {error, unsupported_media_type}
+      end;
+    false ->
+      {error, not_acceptable}
+  end.
 
 %%====================================================================
 %% Internal functions
 %%====================================================================
+
+has_valid_accept_header(Headers) ->
+  case proplists:get_value("accept", Headers) of
+    undefined ->
+      false;
+    Accept ->
+      Accepts = string:split(Accept, ","),
+      lists:member(?CONTENT_TYPE, Accepts) orelse lists:member("*/*", Accepts)
+  end.
+
+has_valid_content_type_header(Headers) ->
+  case proplists:get_value("content-type", Headers) of
+      ?CONTENT_TYPE -> true;
+      _Other -> false
+  end.
+
