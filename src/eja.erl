@@ -14,7 +14,8 @@
 include_api_version(ResponseMap) when is_map(ResponseMap) ->
   maps:put(<<"jsonapi">>, #{<<"version">> => <<"1.0">>}, ResponseMap).
 
-validate_request_headers(Headers) ->
+validate_request_headers(Headers1) ->
+  Headers = normalize_headers(Headers1, []),
   case has_valid_content_type_header(Headers) of
     true ->
       case has_valid_accept_header(Headers) of
@@ -36,13 +37,22 @@ has_valid_accept_header(Headers) ->
     undefined ->
       false;
     Accept ->
-      Accepts = string:split(Accept, ","),
+      Accepts = string:split(Accept, ";"),
       lists:member(?CONTENT_TYPE, Accepts) orelse lists:member("*/*", Accepts)
   end.
 
 has_valid_content_type_header(Headers) ->
   case proplists:get_value("content-type", Headers) of
-      ?CONTENT_TYPE -> true;
-      _Other -> false
+      undefined ->
+        false;
+      Value ->
+        case string:split(Value, ";") of
+          [?CONTENT_TYPE] -> true;
+          [?CONTENT_TYPE | _] -> true;
+          _Other -> false
+        end
   end.
 
+normalize_headers([], Acc) -> Acc;
+normalize_headers([{K, V} | T], Acc) ->
+  normalize_headers(T, [{string:lowercase(K), V} | Acc]).
