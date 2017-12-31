@@ -2,11 +2,11 @@
 
 %% API exports
 -export([ include_api_version/1
-        , get_content_type/0
+        , get_header/1
         , validate_request_headers/1
         ]).
 
--define(CONTENT_TYPE, "application/vnd.api+json").
+-define(JSONAPI_MIME_TYPE, "application/vnd.api+json").
 
 %%====================================================================
 %% API functions
@@ -15,8 +15,10 @@
 include_api_version(ResponseMap) when is_map(ResponseMap) ->
   maps:put(<<"jsonapi">>, #{<<"version">> => <<"1.0">>}, ResponseMap).
 
-get_content_type() ->
-  {"Content-Type", ?CONTENT_TYPE}.
+get_header(content_type) ->
+  {"Content-Type", ?JSONAPI_MIME_TYPE};
+get_header(accept) ->
+  {"Accept", ?JSONAPI_MIME_TYPE}.
 
 validate_request_headers(Headers1) ->
   Headers = normalize_headers(Headers1, []),
@@ -42,7 +44,8 @@ has_valid_accept_header(Headers) ->
       false;
     Accept ->
       Accepts = string:split(Accept, ";"),
-      lists:member(?CONTENT_TYPE, Accepts) orelse lists:member("*/*", Accepts)
+      lists:member(?JSONAPI_MIME_TYPE, Accepts)
+        orelse lists:member("*/*", Accepts)
   end.
 
 has_valid_content_type_header(Headers) ->
@@ -51,8 +54,8 @@ has_valid_content_type_header(Headers) ->
         false;
       Value ->
         case string:split(Value, ";") of
-          [?CONTENT_TYPE] -> true;
-          [?CONTENT_TYPE | _] -> true;
+          [?JSONAPI_MIME_TYPE] -> true;
+          [?JSONAPI_MIME_TYPE | _] -> true;
           _Other -> false
         end
   end.

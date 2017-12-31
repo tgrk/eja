@@ -32,7 +32,11 @@ test_content_negotiation() ->
 
   ?assertEqual(
     {"Content-Type", "application/vnd.api+json"},
-    eja:get_content_type()
+    eja:get_header(content_type)
+  ),
+  ?assertEqual(
+    {"Accept", "application/vnd.api+json"},
+    eja:get_header(accept)
   ),
 
   ?assertEqual(
