@@ -12,14 +12,18 @@
 %% API functions
 %%====================================================================
 
+-spec include_api_version(map()) -> map().
 include_api_version(ResponseMap) when is_map(ResponseMap) ->
   maps:put(<<"jsonapi">>, #{<<"version">> => <<"1.0">>}, ResponseMap).
 
+-spec get_header(atom()) -> tuple().
 get_header(content_type) ->
   {"Content-Type", ?JSONAPI_MIME_TYPE};
 get_header(accept) ->
   {"Accept", ?JSONAPI_MIME_TYPE}.
 
+-spec validate_request_headers([tuple()]) ->
+  ok | {error, unsupported_media_type} | {error, not_acceptable}.
 validate_request_headers(Headers1) ->
   Headers = normalize_headers(Headers1, []),
   case has_valid_content_type_header(Headers) of
