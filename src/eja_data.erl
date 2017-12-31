@@ -63,9 +63,7 @@ query_fun(fields, WithFields) ->
   fun (RowMap) -> maps:with(WithFields, RowMap) end;
 query_fun(filter, FiltersMap) ->
   fun (RowMap) ->
-      FilterPred = fun ({K, V}) when is_function(V) -> V(maps:get(K, RowMap));
-                       ({K, V}) -> not maps:is_key(K, RowMap) orelse maps:get(K, RowMap) == V
-                    end,
+      FilterPred = build_filter_pred(RowMap),
       case lists:all(FilterPred, maps:to_list(FiltersMap)) of
         true  -> RowMap;
         false -> skip
@@ -73,6 +71,11 @@ query_fun(filter, FiltersMap) ->
   end;
 query_fun(_Unknown, _Value) ->
   fun (RowMap) -> RowMap end.
+
+build_filter_pred(RowMap) ->
+  fun ({K, V}) when is_function(V) -> V(maps:get(K, RowMap));
+      ({K, V}) -> not maps:is_key(K, RowMap) orelse maps:get(K, RowMap) == V
+  end.
 
 query_param(Key, Query) ->
   maps:get(Key, Query, []).
