@@ -13,6 +13,7 @@
 %% API functions
 %%====================================================================
 
+-spec build(binary(), [map()] | map(), map()) -> map().
 build(Type, Data, Query) ->
   Meta          = maps:get(meta, Query, []),
   Links         = maps:get(links, Query, []),

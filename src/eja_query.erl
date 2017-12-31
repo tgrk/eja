@@ -13,6 +13,7 @@
 %% API functions
 %%====================================================================
 
+-spec parse([tuple()]) -> map().
 parse(Args) when is_list(Args) ->
   parse_args(Args, #{}).
 
