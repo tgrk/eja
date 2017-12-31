@@ -37,7 +37,9 @@ build_response(Data, Meta, Links, Included, Relationships) ->
   },
   maps:filter(fun filter_empty/2, Object).
 
-build_data(Type, Data, WithFields) ->
+  build_data(Type, Data, WithFields) when is_map(Data) ->
+      [build_data_item(Type, Data, WithFields)];
+build_data(Type, Data, WithFields) when is_list(Data) ->
   [build_data_item(Type, Item, WithFields) || Item <- Data].
 
 build_data_item(Type, Item, WithFields) ->
