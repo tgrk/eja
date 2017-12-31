@@ -112,7 +112,7 @@ test_data_handling() ->
   },
 
   ?assertEqual(
-    [#{<<"title">> => <<"Foo">>}],
+    {ok, [#{<<"title">> => <<"Foo">>}]},
     eja_data:apply(
       Query,
       make_data()

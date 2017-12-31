@@ -17,6 +17,7 @@
 %% API functions
 %%====================================================================
 
+-spec apply(map(), [map()]) -> {ok, [map()]}.
 apply(Query, Data) ->
   QueryFuns = build_query_funs(Query),
   apply_row(Data, QueryFuns, []).
@@ -26,7 +27,7 @@ apply(Query, Data) ->
 %%====================================================================
 
 apply_row([], _QueryFuns, Acc) ->
-  lists:reverse(Acc);
+  {ok, lists:reverse(Acc)};
 apply_row([Row | Rows], QueryFuns, Acc) ->
   case apply_query(QueryFuns, Row) of
     skip ->
