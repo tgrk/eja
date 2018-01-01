@@ -17,8 +17,8 @@
 %% API functions
 %%====================================================================
 
--spec apply(map(), [map()]) -> {ok, [map()]}.
-apply(Query, Data) ->
+-spec apply([map()], map()) -> {ok, [map()]}.
+apply(Data, Query) ->
   QueryFuns = build_query_funs(Query),
   apply_row(Data, QueryFuns, []).
 
