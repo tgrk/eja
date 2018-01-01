@@ -18,6 +18,7 @@ eja_test_() ->
       , {"Error Object",        fun test_error_object/0}
       , {"Relationships",       fun test_relationships/0}
       , {"Pagination",          fun test_pagination/0}
+      , {"Top level API",       fun test_top_api/0}
     ]
   }.
 
@@ -113,10 +114,7 @@ test_data_handling() ->
 
   ?assertEqual(
     {ok, [#{<<"title">> => <<"Foo">>}]},
-    eja_data:apply(
-      Query,
-      make_data()
-    )
+    eja_data:apply(make_data(), Query)
   ).
 
 test_response_object() ->
@@ -180,10 +178,70 @@ test_error_object() ->
   ok.
 
 test_relationships() ->
-  ?assert(false).
+  Data = [make_data() || _ <- lists:seq(1, 150)],
+  ?debugFmt("total=~p", [length(Data)]),
+
+  ParseUriFun = fun(Type, Links) ->
+                  case maps:get(Type, Links, undefined) of
+                    undefined ->
+                      missing;
+                    Url ->
+                      {ok, Uri} = http_uri:parse(Url),
+                      element(6, Uri)
+                  end
+                end,
+
+  Params = #{
+      resource_uri => "http://example.com/articles"
+    , page         => #{<<"number">> => 3, <<"size">> => 25}
+    , total        => length(Data)
+  },
+  Links = maps:get(<<"links">>, eja_pagination:build(Params)),
+
+  ?assertEqual(
+    <<"?page[number]=1&page[size]=25">>,
+    ParseUriFun(<<"first">>, Links)
+  ),
+  ?assertEqual(
+    <<"?page[number]=2&page[size]=25">>,
+    ParseUriFun(<<"prev">>, Links)
+  ),
+  ?assertEqual(
+    <<"?page[number]=3&page[size]=25">>,
+    ParseUriFun(<<"self">>, Links)
+  ),
+  ?assertEqual(
+    <<"?page[number]=4&page[size]=25">>,
+    ParseUriFun(<<"next">>, Links)
+  ),
+  ?assertEqual(
+    <<"?page[number]=6&page[size]=25">>,
+    ParseUriFun(<<"last">>, Links)
+  ),
+
+  ok.
 
 test_pagination() ->
   ?assert(false).
+
+test_top_api() ->
+  Response1 = eja:create(<<"articles">>, make_data(), []),
+  [FirstRow, _] = Data = maps:get(<<"data">>, Response1),
+
+  ?assert(length(Data) == 2),
+  ?assertEqual(
+    maps:get(<<"id">>, FirstRow),
+    <<"823ec82a-5e73-4013-a253-a2abf771c6db">>
+  ),
+  ?assertEqual(
+    maps:get(<<"type">>, FirstRow),
+    <<"articles">>
+  ),
+  ?assertEqual(
+    nested:get([<<"attributes">>, <<"title">>], FirstRow),
+    <<"Foo">>
+  ),
+  ok.
 
 %% =============================================================================
 
