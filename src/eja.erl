@@ -4,6 +4,7 @@
 -export([ include_api_version/1
         , get_header/1
         , validate_request_headers/1
+        , create/3
         ]).
 
 -define(JSONAPI_MIME_TYPE, "application/vnd.api+json").
@@ -36,6 +37,16 @@ validate_request_headers(Headers1) ->
       end;
     false ->
       {error, not_acceptable}
+  end.
+
+-spec create(binary(), [map()] | map(), [tuple()]) -> map().
+create(Type, Data, QueryArgs) ->
+  Query = eja_query:parse(QueryArgs),
+  case eja_data:apply(Data, Query) of
+    {ok, ResponseData} ->
+      eja_response:build(Type, ResponseData, Query);
+    {error, Errors} ->
+      eja_error:build(Errors)
   end.
 
 %%====================================================================
