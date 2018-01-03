@@ -1,21 +1,30 @@
 %%%----------------------------------------------------------------------------
 %%% @author Martin Wiso <martin@wiso.cz>
 %%% @doc
-%%% Helper for handling query parameters
+%%% Helper for handling query parameters and context
 %%% @end
 %%%----------------------------------------------------------------------------
--module(eja_query).
+-module(eja_context).
 
 %% API exports
--export([parse/1]).
+-export([ create/1
+        , create/2
+        ]).
 
 %%====================================================================
 %% API functions
 %%====================================================================
 
--spec parse([tuple()]) -> map().
-parse(Args) when is_list(Args) ->
-  parse_args(Args, #{}).
+-spec create([tuple()]) -> map().
+create(QueryArgs) ->
+  DefaultOpts = #{
+      include_header => false
+  },
+  create(QueryArgs, DefaultOpts).
+
+-spec create([tuple()], map()) -> map().
+create(QueryArgs, Opts) ->
+  parse_args(QueryArgs, #{opts => Opts}).
 
 %%====================================================================
 %% Internal functions
@@ -53,6 +62,11 @@ parse_sort(Sort) ->
 
 build_sort(<<"-", (Field)/binary>>) -> {desc, Field};
 build_sort(Field) -> {asc, Field}.
+
+has_relationship(Type, Id, Context) ->
+  %TODO: apply include/fields from query
+  %TODO: return 400 if not applicable
+  ok.
 
 split(Value) ->
   binary:split(Value, [<<",">>, <<" ">>], [global, trim_all]).

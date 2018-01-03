@@ -7,38 +7,50 @@
 -module(eja_response).
 
 %% API exports
--export([build/3]).
+-export([ serialize/3
+        , deserialize/1
+        ]).
 
 %%====================================================================
 %% API functions
 %%====================================================================
 
--spec build(binary(), [map()] | map(), map()) -> map().
-build(Type, Data, Query) ->
-  Meta          = maps:get(meta, Query, []),
-  Links         = maps:get(links, Query, []),
-  Included      = maps:get(included, Query, []),
-  Relationships = maps:get(relationships, Query, []),
-  WithFields    = maps:get(fields, Query, []),
+-spec serialize(binary(), [map()] | map(), map()) -> map().
+serialize(Type, Data, Context) ->
+  WithFields = maps:get(fields, Context, []),
   build_response(
-    build_data(Type, Data, WithFields), Meta, Links, Included, Relationships
+    build_data(Type, Data, WithFields), Context
   ).
+
+-spec deserialize([map()]) -> [map()].
+deserialize(Data) ->
+  [from_object(R) || R <- Data].
 
 %%====================================================================
 %% Internal functions
 %%====================================================================
 
-build_response(Data, Meta, Links, Included, Relationships) ->
+from_object(ResponseObject) ->
+  %%TODO: process types
+  Id = maps:get(<<"id">>, ResponseObject),
+  Attributes = maps:get(<<"attributes">>, ResponseObject),
+  maps:put(<<"id">>, Id, Attributes).
+
+build_response(Data, Context) ->
+  IncludeHeader = nested:get([opts, include_header], Context, false),
   Object = #{
     <<"data">>          => Data,
-    <<"meta">>          => Meta,
-    <<"links">>         => Links,
-    <<"included">>      => Included,
-    <<"relationships">> => Relationships
+    <<"meta">>          => maps:get(meta, Context, []),
+    <<"links">>         => maps:get(links, Context, []),
+    <<"included">>      => maps:get(included, Context, []),
+    <<"relationships">> => maps:get(relationships, Context, [])
   },
-  maps:filter(fun filter_empty/2, Object).
+  maps:filter(
+    fun filter_empty/2,
+    maybe_include_header(IncludeHeader, Object)
+  ).
 
-  build_data(Type, Data, WithFields) when is_map(Data) ->
+build_data(Type, Data, WithFields) when is_map(Data) ->
       [build_data_item(Type, Data, WithFields)];
 build_data(Type, Data, WithFields) when is_list(Data) ->
   [build_data_item(Type, Item, WithFields) || Item <- Data].
@@ -63,3 +75,8 @@ filter_empty(_Key, _Value) -> true.
 
 filter_defaults(Item) ->
   maps:without([<<"id">>], Item).
+
+maybe_include_header(true, Object) ->
+  maps:put(<<"jsonapi">>, #{<<"version">> => <<"1.0">>}, Object);
+maybe_include_header(false, Object) ->
+  Object.

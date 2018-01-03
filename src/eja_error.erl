@@ -7,13 +7,14 @@
 -module(eja_error).
 
 %% API exports
--export([build/1]).
+-export([serialize/1]).
 
 %%====================================================================
 %% API functions
 %%====================================================================
 
-build(Errors) ->
+-spec serialize([map()]) -> map().
+serialize(Errors) ->
   #{<<"errors">> => [build_error(E) || E <- Errors]}.
 
 %%====================================================================

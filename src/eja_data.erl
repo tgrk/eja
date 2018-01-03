@@ -6,10 +6,8 @@
 %%%----------------------------------------------------------------------------
 -module(eja_data).
 
--compile({no_auto_import, [apply/2]}).
-
 %% API exports
--export([apply/2]).
+-export([build/2]).
 
 -define(QUERY_FIELDS, [fields, filter]).
 
@@ -17,15 +15,20 @@
 %% API functions
 %%====================================================================
 
--spec apply([map()], map()) -> {ok, [map()]}.
-apply(Data, Query) ->
-  QueryFuns = build_query_funs(Query),
+%TODO: pagination - auto add -  "meta": {"total-pages": 13} info
+%TODO: handle relationships on url level eg. /articles/1/relationships/comments
+%TODO: fields vs relationships  eg. /articles?include=author&fields[articles]=title,body&fields[people]=name vs /articles?include=author&fields[articles]=title,body,author&fields[people]=name
+
+-spec build([map()], map()) -> {ok, [map()]}.
+build(Data, Context) ->
+  QueryFuns = build_query_funs(Context),
   apply_row(Data, QueryFuns, []).
 
 %%====================================================================
 %% Internal functions
 %%====================================================================
 
+%%TODO: serialize types (datetime)
 apply_row([], _QueryFuns, Acc) ->
   {ok, lists:reverse(Acc)};
 apply_row([Row | Rows], QueryFuns, Acc) ->

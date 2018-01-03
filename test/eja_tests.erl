@@ -12,7 +12,7 @@ eja_test_() ->
     fun(_) -> ok end,
     [
         {"Content Negotiation", fun test_content_negotiation/0}
-      , {"Query Parser",        fun test_query_parser/0}
+      , {"Context handling",    fun test_context_handling/0}
       , {"Data handling",       fun test_data_handling/0}
       , {"Response Object",     fun test_response_object/0}
       , {"Error Object",        fun test_error_object/0}
@@ -72,7 +72,7 @@ test_content_negotiation() ->
 
   ok.
 
-test_query_parser() ->
+test_context_handling() ->
   Args = [
       {<<"include">>, <<"author">>}
     , {<<"fields[articles]">>, <<"title,body,author">>}
@@ -82,28 +82,40 @@ test_query_parser() ->
     , {<<"page[offset]">>, <<"1">>}
     , {<<"page[limit]">>, <<"15">>}
   ],
-  Query = eja_query:parse(Args),
+  Context = eja_context:create(Args),
+
   ?assertEqual(
     #{  <<"articles">> => [<<"title">>,<<"body">>,<<"author">>]
       , <<"people">>   => [<<"name">>]
     },
-    maps:get(fields, Query)
+    maps:get(fields, Context)
   ),
-  ?assertEqual([<<"author">>], maps:get(include, Query)),
+  ?assertEqual([<<"author">>], maps:get(include, Context)),
   ?assertEqual(
     #{<<"tag">> => [<<"1">>, <<"2">>]}
-    , maps:get(filter, Query)
+    , maps:get(filter, Context)
   ),
   ?assertEqual(
       [{asc, <<"title">>}, {asc, <<"author">>}]
-    , maps:get(sort, Query)
+    , maps:get(sort, Context)
   ),
   ?assertEqual(
     #{  <<"offset">> => <<"1">>
       , <<"limit">>  => <<"15">>
     },
-    maps:get(page, Query)
+    maps:get(page, Context)
   ),
+  ?assertEqual(
+    [{asc,<<"title">>},{asc,<<"author">>}],
+    maps:get(sort, Context)
+  ),
+
+  %% context
+  ?assertEqual(
+    false,
+    nested:get([opts, include_header], Context)
+  ),
+
   ok.
 
 test_data_handling() ->
@@ -114,25 +126,28 @@ test_data_handling() ->
 
   ?assertEqual(
     {ok, [#{<<"title">> => <<"Foo">>}]},
-    eja_data:apply(make_data(), Query)
-  ).
-
-test_response_object() ->
-  %% api version
-  ?assertEqual(
-    #{<<"version">> => <<"1.0">>},
-    maps:get(<<"jsonapi">>, eja:include_api_version(maps:new()))
+    eja_data:build(make_data(), Query)
   ),
 
-  %% documents
-  Response = eja_response:build(
+  ok.
+
+test_response_object() ->
+  %% serialize basic document
+  Response = eja_response:serialize(
     <<"article">>,
     make_data(),
-    #{fields => [<<"title">>]}
+    #{  fields => [<<"title">>]
+      , opts   => #{include_header => true}
+    }
   ),
 
   [FirstRow, _] = Data = maps:get(<<"data">>, Response),
+  ?assertEqual(
+    #{<<"version">> => <<"1.0">>},
+    maps:get(<<"jsonapi">>, Response)
+  ),
   ?assert(length(Data) == 2),
+
   ?assertEqual(
     maps:get(<<"id">>, FirstRow),
     <<"823ec82a-5e73-4013-a253-a2abf771c6db">>
@@ -145,10 +160,13 @@ test_response_object() ->
     nested:get([<<"attributes">>, <<"title">>], FirstRow),
     <<"Foo">>
   ),
+
+  %%TODO: deserialize basic document
+
   ok.
 
 test_error_object() ->
-  Error1 = eja_error:build(
+  Error1 = eja_error:serialize(
     [
        {<<"Bad Request">>, <<"42">>, <<"Missing foobar value!">>}
     , #{  title => <<"Bad Request">>
@@ -218,6 +236,8 @@ test_relationships() ->
     <<"?page[number]=6&page[size]=25">>,
     ParseUriFun(<<"last">>, Links)
   ),
+
+  %%TODO: test edge cases
 
   ok.
 

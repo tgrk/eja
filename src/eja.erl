@@ -1,10 +1,9 @@
 -module(eja).
 
 %% API exports
--export([ include_api_version/1
+-export([ create/3
         , get_header/1
         , validate_request_headers/1
-        , create/3
         ]).
 
 -define(JSONAPI_MIME_TYPE, "application/vnd.api+json").
@@ -12,10 +11,6 @@
 %%====================================================================
 %% API functions
 %%====================================================================
-
--spec include_api_version(map()) -> map().
-include_api_version(ResponseMap) when is_map(ResponseMap) ->
-  maps:put(<<"jsonapi">>, #{<<"version">> => <<"1.0">>}, ResponseMap).
 
 -spec get_header(atom()) -> tuple().
 get_header(content_type) ->
@@ -39,14 +34,15 @@ validate_request_headers(Headers1) ->
       {error, not_acceptable}
   end.
 
+%%TODO: allow to pass opts (optional)
 -spec create(binary(), [map()] | map(), [tuple()]) -> map().
 create(Type, Data, QueryArgs) ->
-  Query = eja_query:parse(QueryArgs),
-  case eja_data:apply(Data, Query) of
+  Context = eja_context:create(QueryArgs),
+  case eja_data:build(Data, Context) of
     {ok, ResponseData} ->
-      eja_response:build(Type, ResponseData, Query);
+      eja_response:serialize(Type, ResponseData, Context);
     {error, Errors} ->
-      eja_error:build(Errors)
+      eja_error:serialize(Errors)
   end.
 
 %%====================================================================
@@ -78,3 +74,14 @@ has_valid_content_type_header(Headers) ->
 normalize_headers([], Acc) -> Acc;
 normalize_headers([{K, V} | T], Acc) ->
   normalize_headers(T, [{string:lowercase(K), V} | Acc]).
+
+%%TODO: generic type conversion (used on uri params and json data)
+parse(number, Val) ->
+  case re:run(Val, "^[0-9]*$") of
+    nomatch ->
+      {error, unable_to_parse};
+    _Match ->
+      {ok, binary_to_integer(Val)}
+  end;
+parse(date, Value) ->
+  iso8601:parse(Value).
