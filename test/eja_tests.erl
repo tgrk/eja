@@ -14,6 +14,7 @@ eja_test_() ->
         {"Content Negotiation", fun test_content_negotiation/0}
       , {"Context handling",    fun test_context_handling/0}
       , {"Data handling",       fun test_data_handling/0}
+      , {"Enforce underscores", fun test_enforce_underscores/0}
       , {"Response Object",     fun test_response_object/0}
       , {"Error Object",        fun test_error_object/0}
       , {"Relationships",       fun test_relationships/0}
@@ -131,11 +132,37 @@ test_data_handling() ->
 
   ok.
 
+test_enforce_underscores() ->
+  Data = [
+  #{    <<"post-id">>    => <<"823ec82a-5e73-4013-a253-a2abf771c6db">>
+      , <<"post-title">> => <<"Foo">>
+      , <<"post-body">>  => <<"Lorem-impsum1">>
+    }
+  ],
+  Opts = #{opts => #{
+    enforce_underscores => true}
+  },
+
+  Result = maps:get(
+    <<"data">>,
+    eja_response:serialize(<<"posts">>, Data, Opts)
+  ),
+
+  ?assertEqual(
+    #{<<"post_body">> => <<"Lorem-impsum1">>,
+      <<"post_id">> => <<"823ec82a-5e73-4013-a253-a2abf771c6db">>,
+      <<"post_title">> => <<"Foo">>
+    },
+    maps:get(<<"attributes">>, hd(Result))
+  ).
+
 test_response_object() ->
+  InputData = make_data(),
+
   %% serialize basic document
   Response = eja_response:serialize(
     <<"article">>,
-    make_data(),
+    InputData,
     #{  fields => [<<"title">>]
       , opts   => #{include_header => true}
     }
@@ -161,7 +188,11 @@ test_response_object() ->
     <<"Foo">>
   ),
 
-  %%TODO: deserialize basic document
+  %% deserialize basic document
+  ?assertEqual(
+    maps:remove(<<"body">>, hd(InputData)),
+    hd(eja_response:deserialize([FirstRow]))
+  ),
 
   ok.
 
