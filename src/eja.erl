@@ -2,8 +2,13 @@
 
 %% API exports
 -export([ create/3
-        , get_header/1
+        , create/4
+
         , validate_request_headers/1
+        , validate_payload/1
+        , validate_query/1
+
+        , get_header/1
         ]).
 
 -define(JSONAPI_MIME_TYPE, "application/vnd.api+json").
@@ -11,6 +16,14 @@
 %%====================================================================
 %% API functions
 %%====================================================================
+
+-spec create(binary(), [map()] | map(), [tuple()]) -> map().
+create(Type, Data, QueryArgs) ->
+  handle(Type, Data, eja_context:create(QueryArgs)).
+
+-spec create(binary(), [map()] | map(), [tuple()], map()) -> map().
+create(Type, Data, QueryArgs, Opts) ->
+  handle(Type, Data, eja_context:create(QueryArgs, Opts)).
 
 -spec get_header(atom()) -> tuple().
 get_header(content_type) ->
@@ -34,20 +47,24 @@ validate_request_headers(Headers1) ->
       {error, not_acceptable}
   end.
 
-%%TODO: allow to pass opts (optional)
--spec create(binary(), [map()] | map(), [tuple()]) -> map().
-create(Type, Data, QueryArgs) ->
-  Context = eja_context:create(QueryArgs),
+-spec validate_payload(map()) -> ok | {error, bad_request}.
+validate_payload(Data) ->
+  eja_response:validate(Data).
+
+validate_query(_Args) ->
+  not_implemented.
+
+%%====================================================================
+%% Internal functions
+%%====================================================================
+
+handle(Type, Data, Context) ->
   case eja_data:build(Data, Context) of
     {ok, ResponseData} ->
       eja_response:serialize(Type, ResponseData, Context);
     {error, Errors} ->
       eja_error:serialize(Errors)
   end.
-
-%%====================================================================
-%% Internal functions
-%%====================================================================
 
 has_valid_accept_header(Headers) ->
   case proplists:get_value("accept", Headers) of

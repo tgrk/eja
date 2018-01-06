@@ -292,6 +292,40 @@ test_top_api() ->
     nested:get([<<"attributes">>, <<"title">>], FirstRow),
     <<"Foo">>
   ),
+
+  % validations
+  ?assertEqual(
+    ok,
+    eja:validate(#{<<"data">> => []})
+  ),
+  ?assertEqual(
+    ok,
+    eja:validate(
+      #{<<"data">> =>
+        eja_response:serialize(<<"foo">>, make_data(), #{}
+      }
+    )
+  ),
+  ?assertEqual(
+    {error, bad_request},
+    eja:validate(#{})
+  ),
+  ?assertEqual(
+    {error, bad_request},
+    eja:validate([]])
+  ),
+  ,
+  ?assertEqual(
+    {error, bad_request},
+    eja:validate(make_data())
+  ),
+  ?assertEqual(
+    {error, bad_request},
+    eja:validate(
+      #{<<"data">> => [#{<<"foo">> => <<"bar">>}]}
+    )
+  ),
+
   ok.
 
 %% =============================================================================

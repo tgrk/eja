@@ -9,7 +9,14 @@
 %% API exports
 -export([ serialize/3
         , deserialize/1
+        , validate/1
         ]).
+
+-define(REQUIRED_FIELDS, [
+    <<"id">>
+  , <<"type">>
+  , <<"attributes">>
+]).
 
 %%====================================================================
 %% API functions
@@ -30,9 +37,30 @@ serialize(Type, Data, Context) ->
 deserialize(Data) ->
   [from_object(R) || R <- Data].
 
+-spec validate(map()) -> ok | {error, bad_request}.
+validate(Data) ->
+  case maps:get(<<"data">>, Data, false) of
+    false ->
+      {error, bad_reques};
+    [] ->
+      ok;
+    DataItems ->
+      validate_data_items(DataItems)
+  end.
+
 %%====================================================================
 %% Internal functions
 %%====================================================================
+
+validate_data_items([]) ->
+  ok;
+validate_data_items([H | T]) ->
+  case maps:take(?REQUIRED_FIELDS, H) of
+    error ->
+      {error, bad_request};
+    _Found ->
+      validate_data_items(T)
+  end.
 
 from_object(ResponseObject) ->
   %%TODO: process types
