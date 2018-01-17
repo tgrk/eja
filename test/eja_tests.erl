@@ -200,33 +200,69 @@ test_error_object() ->
   Error1 = eja_error:serialize(
     [
        {<<"Bad Request">>, <<"42">>, <<"Missing foobar value!">>}
-    , #{  title => <<"Bad Request">>
+    ,  {<<"Bad Request">>, <<"Missing foobar value!">>}
+    , #{
+          title  => <<"Bad Request">>
         , status => <<"42">>
         , detail => <<"Missing foobar value!">>
       }
-    , #{  title => <<"Bad Request">>
+    , #{
+          title  => <<"Bad Request">>
         , detail => <<"Missing foobar value!">>
       }
+    , #{
+          title  => <<"Bad Request">>
+        , detail => <<"Missing foobar value!">>
+        , params => #{
+            source => #{pointer => <<"/path/field">>}
+          }
+      }
+    , #{
+          title  => <<"Invalid Query Parameter">>
+        , detail => <<"The resource does not have an `author` relationship path.">>
+        , params => #{
+            source => #{parameter => <<"include">>}
+       }
+    }
   ]),
-  [First, Two, Three] = Data = maps:get(<<"errors">>, Error1),
-  ?assert(length(Data) == 3),
+  [First, Two, Three, Four, Five, Six] = maps:get(<<"errors">>, Error1),
   ?assertEqual(
     #{  <<"detail">> => <<"Missing foobar value!">>
       , <<"status">> => <<"42">>
-      , <<"title">> => <<"Bad Request">>
+      , <<"title">>  => <<"Bad Request">>
     },
     First
   ),
-  ?assertEqual(First, Two),
+  ?assertEqual(First, Three),
+  ?assertEqual(Two, Four),
   ?assertEqual(
     #{  <<"detail">> => <<"Missing foobar value!">>
-      , <<"title">> => <<"Bad Request">>
+      , <<"title">>  => <<"Bad Request">>
     },
-    Three
+    Four
   ),
+  ?assertEqual(
+    #{  <<"detail">> => <<"Missing foobar value!">>
+      , <<"source">> => #{<<"pointer">> => <<"/path/field">>}
+      , <<"title">>  => <<"Bad Request">>
+    },
+    Five
+  ),
+  ?assertEqual(
+    #{
+        <<"detail">> => <<"The resource does not have an `author` relationship path.">>
+      , <<"source">> => #{<<"parameter">> => <<"include">>}
+      , <<"title">>  => <<"Invalid Query Parameter">>
+    },
+    Six
+  ),
+
   ok.
 
 test_relationships() ->
+  ok.
+
+test_pagination() ->
   Data = [make_data() || _ <- lists:seq(1, 150)],
   ?debugFmt("total=~p", [length(Data)]),
 
@@ -272,9 +308,6 @@ test_relationships() ->
 
   ok.
 
-test_pagination() ->
-  ?assert(false).
-
 test_top_api() ->
   Response1 = eja:create(<<"articles">>, make_data(), []),
   [FirstRow, _] = Data = maps:get(<<"data">>, Response1),
@@ -296,32 +329,29 @@ test_top_api() ->
   % validations
   ?assertEqual(
     ok,
-    eja:validate(#{<<"data">> => []})
+    eja:validate_payload(#{<<"data">> => []})
   ),
   ?assertEqual(
     ok,
-    eja:validate(
-      #{<<"data">> =>
-        eja_response:serialize(<<"foo">>, make_data(), #{}
-      }
+    eja:validate_payload(
+      eja_response:serialize(<<"foo">>, make_data(), #{})
     )
   ),
   ?assertEqual(
     {error, bad_request},
-    eja:validate(#{})
+    eja:validate_payload(#{})
   ),
   ?assertEqual(
     {error, bad_request},
-    eja:validate([]])
-  ),
-  ,
-  ?assertEqual(
-    {error, bad_request},
-    eja:validate(make_data())
+    eja:validate_payload([])
   ),
   ?assertEqual(
     {error, bad_request},
-    eja:validate(
+    eja:validate_payload(make_data())
+  ),
+  ?assertEqual(
+    {error, bad_request},
+    eja:validate_payload(
       #{<<"data">> => [#{<<"foo">> => <<"bar">>}]}
     )
   ),
