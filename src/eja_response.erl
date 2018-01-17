@@ -12,11 +12,12 @@
         , validate/1
         ]).
 
--define(REQUIRED_FIELDS, [
-    <<"id">>
-  , <<"type">>
-  , <<"attributes">>
-]).
+-define(REQUIRED_FIELDS, sets:from_list([
+      <<"attributes">>
+    , <<"id">>
+    , <<"type">>
+    ])
+  ).
 
 %%====================================================================
 %% API functions
@@ -38,10 +39,10 @@ deserialize(Data) ->
   [from_object(R) || R <- Data].
 
 -spec validate(map()) -> ok | {error, bad_request}.
-validate(Data) ->
-  case maps:get(<<"data">>, Data, false) of
+validate(Payload) ->
+  case maps:get(<<"data">>, Payload, false) of
     false ->
-      {error, bad_reques};
+      {error, bad_request};
     [] ->
       ok;
     DataItems ->
@@ -55,12 +56,15 @@ validate(Data) ->
 validate_data_items([]) ->
   ok;
 validate_data_items([H | T]) ->
-  case maps:take(?REQUIRED_FIELDS, H) of
-    error ->
+  case has_required_keys(H) of
+    false ->
       {error, bad_request};
-    _Found ->
+    true ->
       validate_data_items(T)
   end.
+
+has_required_keys(Item) ->
+  sets:is_subset(?REQUIRED_FIELDS, sets:from_list(maps:keys(Item))).
 
 from_object(ResponseObject) ->
   %%TODO: process types
