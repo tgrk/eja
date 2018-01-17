@@ -48,8 +48,10 @@ validate_request_headers(Headers1) ->
   end.
 
 -spec validate_payload(map()) -> ok | {error, bad_request}.
-validate_payload(Data) ->
-  eja_response:validate(Data).
+validate_payload(Data) when is_map(Data) ->
+  eja_response:validate(Data);
+validate_payload(_Data) ->
+  {error, bad_request}.
 
 validate_query(_Args) ->
   not_implemented.
