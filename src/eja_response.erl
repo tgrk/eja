@@ -24,14 +24,14 @@
 %%====================================================================
 
 -spec serialize(binary(), [map()] | map(), map()) -> map().
-serialize(Type, Data, Context) ->
+serialize(Type, Data, Context0) ->
+  Context    = apply_opts_funs(Context0),
   WithFields = maps:get(fields, Context, []),
   Opts       = maps:get(opts, Context, #{}),
-  IncludeHeader = maps:get(include_header, Opts, false),
   build_response(
     build_data(Type, Data, WithFields, Opts),
     Context,
-    IncludeHeader
+    maps:get(include_header, Opts, false)
   ).
 
 -spec deserialize([map()]) -> [map()].
@@ -128,3 +128,34 @@ maybe_include_header(true, Object) ->
   maps:put(<<"jsonapi">>, #{<<"version">> => <<"1.0">>}, Object);
 maybe_include_header(false, Object) ->
   Object.
+
+apply_opts_funs(Context) ->
+  Opts = maps:get(opts, Context, #{}),
+  Funs = [  fun maybe_build_pagination_meta/2
+          , fun maybe_build_pagination/2
+  ],
+  lists:foldl(fun (Fun, Acc) -> Fun(Acc, Opts) end, Context, Funs).
+
+maybe_build_pagination(Context, Opts) ->
+  case maps:is_key(page, Opts) of
+    false ->
+      Context;
+    true ->
+      maybe_append(links, Context, eja_pagination:build_links(Opts))
+  end.
+
+maybe_build_pagination_meta(Context, Opts) ->
+  case maps:get(total, Opts, false) of
+    false ->
+      Context;
+    Total ->
+      maybe_append(meta, Context, eja_pagination:build_meta(Total))
+  end.
+
+maybe_append(Key, Map, Value) ->
+  case maps:get(Key, Map, false) of
+    false ->
+      maps:put(Key, Value, Map);
+    Existing  ->
+      maps:put(Key, maps:merge(Existing, Value), Map)
+  end.

@@ -91,21 +91,27 @@ test_context_handling() ->
     },
     maps:get(fields, Context)
   ),
+
   ?assertEqual([<<"author">>], maps:get(include, Context)),
+
   ?assertEqual(
     #{<<"tag">> => [<<"1">>, <<"2">>]}
     , maps:get(filter, Context)
   ),
+
   ?assertEqual(
       [{asc, <<"title">>}, {asc, <<"author">>}]
     , maps:get(sort, Context)
   ),
+
+  ?assertNot(maps:is_key(page, Context)),
   ?assertEqual(
     #{  <<"offset">> => <<"1">>
       , <<"limit">>  => <<"15">>
     },
-    maps:get(page, Context)
+    nested:get([opts, page], Context)
   ),
+
   ?assertEqual(
     [{asc,<<"title">>},{asc,<<"author">>}],
     maps:get(sort, Context)
@@ -263,9 +269,7 @@ test_relationships() ->
   ok.
 
 test_pagination() ->
-  Data = [make_data() || _ <- lists:seq(1, 150)],
-  ?debugFmt("total=~p", [length(Data)]),
-
+  Data = lists:flatten([make_data() || _ <- lists:seq(1, 150)]),
   ParseUriFun = fun(Type, Links) ->
                   case maps:get(Type, Links, undefined) of
                     undefined ->
@@ -276,12 +280,14 @@ test_pagination() ->
                   end
                 end,
 
-  Params = #{
+  TotalPages = length(Data),
+  PageSize = 25,
+  Opts = #{
       resource_uri => "http://example.com/articles"
-    , page         => #{<<"number">> => 3, <<"size">> => 25}
-    , total        => length(Data)
+    , page         => #{<<"number">> => 3, <<"size">> => PageSize}
+    , total        => TotalPages
   },
-  Links = maps:get(<<"links">>, eja_pagination:build(Params)),
+  Links = eja_pagination:build_links(Opts),
 
   ?assertEqual(
     <<"?page[number]=1&page[size]=25">>,
@@ -300,11 +306,29 @@ test_pagination() ->
     ParseUriFun(<<"next">>, Links)
   ),
   ?assertEqual(
-    <<"?page[number]=6&page[size]=25">>,
+    <<"?page[number]=12&page[size]=25">>,
     ParseUriFun(<<"last">>, Links)
   ),
 
   %%TODO: test edge cases
+
+  Meta = eja_pagination:build_meta(TotalPages),
+  ?assertEqual(
+    TotalPages,
+    maps:get(<<"total-pages">>, Meta)
+  ),
+
+  Response = eja_response:serialize(
+    <<"article">>,
+    lists:sublist(Data, PageSize),
+    #{  fields => [<<"title">>]
+      , opts   => Opts
+    }
+  ),
+  ?assertEqual(
+    [<<"data">>, <<"links">>, <<"meta">>],
+    maps:keys(Response)
+  ),
 
   ok.
 

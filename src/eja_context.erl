@@ -41,7 +41,8 @@ parse_query_args([{<<"filter", _Rest/binary>> = K, V} | T], Acc) ->
 parse_query_args([{<<"fields", _Rest/binary>> = K, V} | T], Acc) ->
   parse_query_args(T, append_query_args_array(fields, {K, V}, Acc));
 parse_query_args([{<<"page", _Rest/binary>> = K, V} | T], Acc) ->
-  parse_query_args(T, append_query_args_array(page, {K, V}, Acc));
+  Opts = append_query_args_array(page, {K, V}, maps:get(opts, Acc)),
+  parse_query_args(T, maps:put(opts, Opts, Acc));
 parse_query_args([_ | T], Acc) ->
   parse_query_args(T, Acc).
 

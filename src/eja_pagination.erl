@@ -7,7 +7,9 @@
 -module(eja_pagination).
 
 %% API exports
--export([build/1]).
+-export([ build_links/1
+        , build_meta/1
+        ]).
 
 -define(LINK_TARGETS, [
     <<"self">>
@@ -21,19 +23,21 @@
 %% API functions
 %%====================================================================
 
--spec build(map()) -> map().
-build(Params) ->
-  Uri     = maps:get(resource_uri, Params, <<>>),
-  Page    = maps:get(page, Params, #{}),
-  Total   = maps:get(total, Params, 1),
+-spec build_links(map()) -> map().
+build_links(Opts) ->
+  Uri     = maps:get(resource_uri, Opts, <<>>),
+  Page    = maps:get(page, Opts, #{}),
+  Total   = maps:get(total, Opts, 1),
 
   Current = maps:get(<<"number">>, Page, 1),
   Size    = maps:get(<<"size">>, Page, 25),
   Last    = round(math:floor(Total / Size)),
 
-  #{<<"links">> =>
-    build_links(?LINK_TARGETS, Uri, Current, Last, Size, #{})
-  }.
+  build_links(?LINK_TARGETS, Uri, Current, Last, Size, #{}).
+
+-spec build_meta(non_neg_integer()) -> map().
+build_meta(TotalPages) ->
+  #{<<"total-pages">> => TotalPages}.
 
 %%====================================================================
 %% Internal functions
