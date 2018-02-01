@@ -23,16 +23,24 @@
 %% API functions
 %%====================================================================
 
--spec serialize(binary(), [map()] | map(), map()) -> map().
+-spec serialize(binary(), map(), map()) -> {ok, map()} | {error, term()}.
 serialize(Type, Data, Context0) ->
   Context    = apply_opts_funs(Context0),
-  WithFields = maps:get(fields, Context, []),
+  WithFields = maps:get(Type, maps:get(fields, Context, #{}), []),
   Opts       = maps:get(opts, Context, #{}),
-  build_response(
-    build_data(Type, Data, WithFields, Opts),
-    Context,
-    maps:get(include_header, Opts, false)
-  ).
+
+  %%TODO: how to handle relations as we now deal only with top level
+  %%      types
+  case maps:get(Type, Data, wrong_type) of
+    wrong_type ->
+      {error, {wrong_type, Type}};
+    Rows ->
+      build_response(
+        build_data(Type, Rows, WithFields, Opts),
+        Context,
+        maps:get(include_header, Opts, false)
+      )
+end.
 
 -spec deserialize([map()]) -> [map()].
 deserialize(Data) ->
@@ -80,41 +88,42 @@ build_response(Data, Context, IncludeHeader) ->
     <<"included">>      => maps:get(included, Context, []),
     <<"relationships">> => maps:get(relationships, Context, [])
   },
-  maps:filter(
+  Response = maps:filter(
     fun filter_empty/2,
     maybe_include_header(IncludeHeader, Object)
-  ).
+  ),
+  {ok, Response}.
 
 build_data(Type, Data, WithFields, Opts) when is_map(Data) ->
   [build_data_item(Type, Data, WithFields, Opts)];
 build_data(Type, Data, WithFields, Opts) when is_list(Data) ->
-  [build_data_item(Type, Item, WithFields, Opts) || Item <- Data].
+  [build_data_item(Type, Row, WithFields, Opts) || Row <- Data].
 
-build_data_item(Type, Item, WithFields, Opts) ->
-  EnforceUnderscores = maps:get(enforce_underscores, Opts, false),
-  #{<<"id">>         => maps:get(<<"id">>, Item, create_default_id()),
+build_data_item(Type, Row, WithFields, Opts) ->
+  EnforceUnderscores =  maps:get(enforce_underscores, Opts, false),
+  #{<<"id">>         => maps:get(<<"id">>, Row, create_default_id()),
     <<"type">>       => Type,
     <<"attributes">> => maybe_filter_attributes(
-                          Item, WithFields, EnforceUnderscores
+                          Row, WithFields, EnforceUnderscores
                         )
   }.
 
 create_default_id() ->
   list_to_binary(uuid:uuid_to_string(uuid:get_v4())).
 
-maybe_filter_attributes(Item, [], EnforceUnderscores) ->
-  filter_defaults(Item, EnforceUnderscores);
-maybe_filter_attributes(Item, WithFields, EnforceUnderscores) ->
-  filter_defaults(maps:with(WithFields, Item), EnforceUnderscores).
+maybe_filter_attributes(Row, [], EnforceUnderscores) ->
+  filter_defaults(Row, EnforceUnderscores);
+maybe_filter_attributes(Row, WithFields, EnforceUnderscores) ->
+  filter_defaults(maps:with(WithFields, Row), EnforceUnderscores).
 
 filter_empty(<<"data">>, _Value) -> true;
 filter_empty(_Key, []) -> false;
 filter_empty(_Key, _Value) -> true.
 
-filter_defaults(Item, false) ->
-  maps:without([<<"id">>], Item);
-filter_defaults(Item, true) ->
-  enforce_underscores(maps:without([<<"id">>], Item)).
+filter_defaults(Row, false) ->
+  maps:without([<<"id">>], Row);
+filter_defaults(Row, true) ->
+  enforce_underscores(maps:without([<<"id">>], Row)).
 
 enforce_underscores(Attributes) ->
   maps:fold(fun (K, V, Acc) ->

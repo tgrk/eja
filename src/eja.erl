@@ -61,9 +61,14 @@ validate_query(_Args) ->
 %%====================================================================
 
 handle(Type, Data, Context) ->
-  case eja_data:build(Data, Context) of
+  case eja_data:build(Type, Data, Context) of
     {ok, ResponseData} ->
-      eja_response:serialize(Type, ResponseData, Context);
+      case eja_response:serialize(Type, ResponseData, Context) of
+        {ok, Response} ->
+          Response;
+        {error, {wrong_type, _Type}} = Error ->
+          Error
+      end;
     {error, Errors} ->
       eja_error:serialize(Errors)
   end.
